@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Žemėlapio Viktoriną su Ratu</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+  #panel { padding: 10px; background: #f0f0f0; }
+  button { padding: 12px 16px; font-size: 16px; margin: 5px 0; width: 100%; }
+  #question { font-size: 18px; margin: 10px 0; }
+  #answers { display: flex; flex-direction: column; }
+  #map { flex: 1; }
+  @media (min-width: 600px) {
+    body { flex-direction: row; }
+    #panel { width: 35%; height: 100vh; overflow-y: auto; }
+    #map { width: 65%; height: 100vh; }
+    button { width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <button onclick="startQuiz()">Pradėti viktoriną</button>
+  <span id="score">Taškai: 0</span>
+  <div id="question"></div>
+  <div id="answers"></div>
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const items = [
+  { name: "A — Ramusis vandenynas", lat: 21.4932145848832, lon: -93.69534185716833, size: 600000 },
+  { name: "B — Karibų jūra", lat: 14.6677487612225, lon: -73.43039994761482, size: 400000 },
+  { name: "C — Ramusis vandenynas (Panama)", lat: 9.118987119450802, lon: -79.7293610998473, size: 350000 },
+  { name: "D — Atlanto vandenynas (pietų)", lat: -25.387781219254443, lon: -102.6850984252414, size: 700000 },
+  { name: "E — Atlanto vandenynas (Brazilija)", lat: -32.901798705621054, lon: -36.94290964259277, size: 500000 },
+  { name: "F — Pietų vandenynas (Magelano sąsiauris)", lat: -52.438464965578184, lon: -68.60735315899873, size: 600000 },
+
+  { name: "a — Orinoko upė", lat: 7.641409655814251, lon: -64.90137984562176, size: 200000 },
+  { name: "b — Amazonė", lat: -2.441510171152013, lon: -56.64962970435511, size: 300000 },
+  { name: "c — Titikaka", lat: -15.76369093043645, lon: -69.50957868094919, size: 150000 },
+  { name: "d — Panama / La Plata", lat: -27.426807258258172, lon: -56.387022706966896, size: 200000 },
+
+  { name: "I — Gvianos plokščiakalnės", lat: 5.209036154403461, lon: -60.778656852452244, size: 350000 },
+  { name: "II — Andai", lat: -18.513567544904614, lon: -69.76496911267824, size: 500000 },
+  { name: "III — Aconcagua", lat: -32.59358651104364, lon: -70.01345125780094, size: 600000 },
+  { name: "IV — Amazonės žemuma", lat: -4.875583115822765, lon: -63.182544479281574, size: 450000 },
+  { name: "V — Brazilijos plokščiakalnės", lat: -17.762821268800327, lon: -46.52860799976415, size: 400000 },
+  { name: "VI — La Platos žemuma", lat: -29.28783587886125, lon: -60.14627609234928, size: 450000 },
+  { name: "VII — Pampa", lat: -30.93265821337532, lon: -64.28182598633448, size: 300000 },
+  { name: "VIII — Patagonijos plokščiakalnė", lat: -49.21832734189244, lon: -70.52085998803791, size: 700000 }
+];
+
+let map = L.map('map', { zoomControl: true, attributionControl: false }).setView([0, -60], 3);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+let score = 0;
+let correctItem = null;
+let circle = null;
+
+function distance(a, b) {
+  const R = 6371e3; // metres
+  const φ1 = a.lat * Math.PI/180;
+  const φ2 = b.lat * Math.PI/180;
+  const Δφ = (b.lat-a.lat) * Math.PI/180;
+  const Δλ = (b.lon-a.lon) * Math.PI/180;
+
+  const aa = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)*Math.sin(Δλ/2);
+  const cc = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
+  return R * cc;
+}
+
+function startQuiz() {
+  if(circle){ map.removeLayer(circle); circle = null; }
+  correctItem = items[Math.floor(Math.random() * items.length)];
+
+  document.getElementById('question').innerText = "Paspauskite ant teisingo taško rato viduje.";
+
+  circle = L.circle([correctItem.lat, correctItem.lon], { color: 'red', fillColor: '#f03', fillOpacity: 0.2, radius: correctItem.size }).addTo(map);
+  map.fitBounds(circle.getBounds());
+
+  let options = [correctItem];
+
+  // Pasirinkti objektus, kurie yra toliau nuo teisingo taško
+  let distantItems = items.filter(i => i !== correctItem).sort((a,b)=> distance(correctItem,a)-distance(correctItem,b)).slice(-3);
+  options = options.concat(distantItems);
+
+  options.sort(() => Math.random() - 0.5);
+
+  let ansDiv = document.getElementById('answers');
+  ansDiv.innerHTML = "";
+
+  options.forEach(opt => {
+    let btn = document.createElement("button");
+    btn.innerText = opt.name + ` (${opt.name.match(/^[A-Za-z0-9]+/)[0]})`;
+    btn.onclick = () => {
+      if(opt === correctItem){
+        score++;
+        document.getElementById('score').innerText = "Taškai: " + score;
+        alert("Teisingai!");
+      } else {
+        alert("Neteisingai! Teisingas atsakymas buvo: " + correctItem.name);
+      }
+      if(circle){ map.removeLayer(circle); circle = null; }
+      startQuiz();
+    };
+    ansDiv.appendChild(btn);
+  });
+}
+</script>
+
+</body>
+</html>

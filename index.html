@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Žemėlapio Viktoriną su Ratu</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+  #panel { padding: 10px; background: #f0f0f0; }
+  button { padding: 12px 16px; font-size: 16px; margin: 5px 0; width: 100%; }
+  #question { font-size: 18px; margin: 10px 0; }
+  #answers { display: flex; flex-direction: column; }
+  #map { flex: 1; }
+  @media (min-width: 600px) {
+    body { flex-direction: row; }
+    #panel { width: 35%; height: 100vh; overflow-y: auto; }
+    #map { width: 65%; height: 100vh; }
+    button { width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <button onclick="startQuiz()">Pradėti viktoriną</button>
+  <span id="score">Taškai: 0</span>
+  <div id="question"></div>
+  <div id="answers"></div>
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const items = [
+  { name: "Ramusis vandenynas (A)", lat: 22, lon: -112 },
+  { name: "Karibų jūra (B)", lat: 17, lon: -75 },
+  { name: "Ramusis vandenynas (C)", lat: 8, lon: -82 },
+  { name: "Atlanto vandenynas (D)", lat: -50, lon: -60 },
+  { name: "Atlanto vandenynas (E)", lat: -15, lon: -35 },
+  { name: "Pietų vandenynas (F)", lat: -55, lon: -70 },
+  { name: "Orinoko upė (a)", lat: 7, lon: -64 },
+  { name: "Amazonė (b)", lat: -3, lon: -60 },
+  { name: "Parana / La Plata (c)", lat: -28, lon: -58 },
+  { name: "Paragvajaus upė (d)", lat: -23, lon: -57 },
+  { name: "Titikaka (e)", lat: -16, lon: -69 },
+  { name: "Gvianos aukštumos (I)", lat: 5, lon: -60 },
+  { name: "Andai Peru (II)", lat: -10, lon: -75 },
+  { name: "Andai Bolivija (III)", lat: -17, lon: -68 },
+  { name: "Amazonės žemuma (IV)", lat: -5, lon: -63 },
+  { name: "Brazilijos aukštumos (V)", lat: -10, lon: -50 },
+  { name: "Gran Čakas (VI)", lat: -20, lon: -61 },
+  { name: "Patagonijos plynaukštė (VII)", lat: -45, lon: -70 },
+  { name: "Pietiniai Andai (VIII)", lat: -50, lon: -72 }
+];
+
+let map = L.map('map', { zoomControl: true, attributionControl: false }).setView([0, -60], 3);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+let score = 0;
+let correctItem = null;
+let circle = null;
+
+function startQuiz() {
+  
+  if(circle){ map.removeLayer(circle); circle = null; }
+
+ 
+  correctItem = items[Math.floor(Math.random() * items.length)];
+
+  document.getElementById('question').innerText = "Paspauskite ant teisingo taško rato viduje.";
+
+
+  let radius = 500000; // 500 km
+  circle = L.circle([correctItem.lat, correctItem.lon], { color: 'red', fillColor: '#f03', fillOpacity: 0.2, radius: radius }).addTo(map);
+  map.fitBounds(circle.getBounds());
+
+
+  let options = [correctItem];
+  while(options.length < 4){
+    let r = items[Math.floor(Math.random() * items.length)];
+    if(!options.includes(r)) options.push(r);
+  }
+  options.sort(() => Math.random() - 0.5);
+
+  
+  let ansDiv = document.getElementById('answers');
+  ansDiv.innerHTML = "";
+
+  options.forEach(opt => {
+    let btn = document.createElement("button");
+    btn.innerText = opt.name;
+    btn.onclick = () => {
+      if(opt === correctItem){
+        score++;
+        document.getElementById('score').innerText = "Taškai: " + score;
+        alert("Teisingai!");
+      } else {
+        alert("Neteisingai! Teisingas atsakymas buvo: " + correctItem.name);
+      }
+      
+      if(circle){ map.removeLayer(circle); circle = null; }
+      startQuiz();
+    };
+    ansDiv.appendChild(btn);
+  });
+}
+</script>
+
+</body>
+</html>
